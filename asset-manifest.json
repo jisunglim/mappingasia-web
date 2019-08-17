@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/mappingasia-web/static/css/main.d8d65309.chunk.css",
+    "main.js": "/mappingasia-web/static/js/main.1d6fae1c.chunk.js",
+    "main.js.map": "/mappingasia-web/static/js/main.1d6fae1c.chunk.js.map",
+    "runtime~main.js": "/mappingasia-web/static/js/runtime~main.5755567b.js",
+    "runtime~main.js.map": "/mappingasia-web/static/js/runtime~main.5755567b.js.map",
+    "static/css/2.6639d161.chunk.css": "/mappingasia-web/static/css/2.6639d161.chunk.css",
+    "static/js/2.f2180ce5.chunk.js": "/mappingasia-web/static/js/2.f2180ce5.chunk.js",
+    "static/js/2.f2180ce5.chunk.js.map": "/mappingasia-web/static/js/2.f2180ce5.chunk.js.map",
+    "index.html": "/mappingasia-web/index.html",
+    "precache-manifest.11bcb06516d6ecdb2e0695db30661316.js": "/mappingasia-web/precache-manifest.11bcb06516d6ecdb2e0695db30661316.js",
+    "service-worker.js": "/mappingasia-web/service-worker.js",
+    "static/css/2.6639d161.chunk.css.map": "/mappingasia-web/static/css/2.6639d161.chunk.css.map",
+    "static/css/main.d8d65309.chunk.css.map": "/mappingasia-web/static/css/main.d8d65309.chunk.css.map"
+  }
+}
