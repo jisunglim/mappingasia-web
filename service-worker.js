@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/mappingasia-web/precache-manifest.11bcb06516d6ecdb2e0695db30661316.js"
+  "/mappingasia-web/precache-manifest.64f88a41b33b530cb02f438897eea17c.js"
 );
 
 self.addEventListener('message', (event) => {
