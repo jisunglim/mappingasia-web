@@ -4,124 +4,298 @@ import './App.scss';
 import axios, { post } from 'axios';
 
 // react semantic ui
-import { Label, Grid, Tab, Button, Card, Table, List, Menu, Input, Divider, Form, Sidebar, Segment, Header, Popup, Dropdown } from 'semantic-ui-react';
+import { 
+  Divider, Image, Dropdown, Item, Header,
+  Label, Grid, Tab, Button, Card, Table, List, Menu, Input, Form, Sidebar, Segment, Popup 
+} from 'semantic-ui-react';
 
 // vis tools
 import { Sankey } from 'react-vis';
 import ReactMapGL from 'react-map-gl';
 import { StaticMap } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
-import { LineLayer, ColumnLayer } from '@deck.gl/layers';
+import { LineLayer, ColumnLayer, GeoJsonLayer } from '@deck.gl/layers';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Use default plotly-dist to create Plotly component
 import Plotly from 'plotly.js-dist';
 import createPlotlyComponent from 'react-plotly.js/factory';
+
 // import Plot from 'react-plotly.js';
 const Plot = createPlotlyComponent(Plotly);
 
 class App extends Component {
-
   constructor(props) {
     super(props);
 
+    // default handlers
+    this.componentDidMount = this.componentDidMount.bind(this);
+    this.componentWillUnmount = this.componentWillUnmount.bind(this);
+
     this.state = {
-      mapbox_access_token: 'pk.eyJ1IjoiamlzdW5nbGltIiwiYSI6ImNqdDlmM3Y0YTBpd3M0YXRoM3NoeThoZjQifQ.N6OE3k-pAOvhNsmAYx51LQ',
+      mapbox_access_token:
+        "pk.eyJ1IjoiamlzdW5nbGltIiwiYSI6ImNqdDlmM3Y0YTBpd3M0YXRoM3NoeThoZjQifQ.N6OE3k-pAOvhNsmAYx51LQ",
       initial_view_state: {
-        longitude: -122.41669,
-        latitude: 37.7853,
-        zoom: 13,
+        longitude: 104.0668,
+        latitude: 30.5728,
+        zoom: 3,
         pitch: 0,
         bearing: 0
       },
-      line_layer: {
-        id: 'line-layer',
-        data: [{ sourcePosition: [-122.41669, 37.7853], targetPosition: [-122.41669, 37.781] }]
-      },
-      column_layer: {
-        id: 'column-layer',
-        data: [{ value: 0.1, centroid: [-122.41669, 37.7853]}],
-        diskResolution: 12,
-        radius: 250,
-        extruded: true,
+
+      /* Layers */
+      geojson_layer: {
+        id: "country-map",
+        data: null, // To be filled async
         pickable: true,
-        elevationScale: 5000,
-        getPosition: d => d.centroid,
-        getColor: d => [48, 128, d.value * 255, 255],
-        getElevation: d => d.value,
+        stroked: false,
+        filled: true,
+        extruded: true,
+        lineWidthScale: 20,
+        lineWidthMinPixels: 2,
+        getFillColor: d => {
+          return [160, 160, 180, 200];
+        },
+        getLineColor: d => {
+          return [0, 0, 0, 999];
+        },
+        getRadius: 100,
+        getLineWidth: 2,
+        getElevation: 30,
         onHover: ({ object, x, y }) => {
-          // if (!!object) {
-          //   console.log(`height: ${object.value * 5000}m`);
-          // }
-          // const tooltip = `height: ${object.value * 5000}m`;
+          // const tooltip = object.properties.name || object.properties.station;
           /* Update tooltip
-             http://deck.gl/#/documentation/developer-guide/adding-interactivity?section=example-display-a-tooltip-for-hovered-object
+              http://deck.gl/#/documentation/developer-guide/adding-interactivity?section=example-display-a-tooltip-for-hovered-object
           */
         },
-        onClick: ({ object, x, y }) => {
-          if (!!object) {
-            console.log(`height: ${object.value * 5000}m`);
-          }
-        }
-      }
+        onClick: this.handleClickCountry
+      },
+      /* SDG metadata */
+      sdg_goals: [],
+      sdg_targets: [],
+      sdg_indicators: [],
+      sdg_serieses: [],
 
+      /* selected */
+      selected_country: null,
+
+      selected_goal: null,
+      selected_target: null,
+      selected_indicator: null,
+      selected_series: null
     };
   }
 
-
+  /***********************************************************
+   ************ Default handler and layout handler ***********
+   ***********************************************************/
   componentDidMount() {
-    console.log('component has been mounted!');
+    console.log("component has been mounted!");
 
-    fetch('https://raw.githubusercontent.com/uber-common/deck.gl-data/master/website/hexagons.json')
-      .then(response => response.json())
-      // .then(data => console.log(data));
+    // let layers = [
+    //   new GeoJsonLayer(this.state.geojson_layer)
+    // ]
+    // this.setState({ layers: layers });
+
+    fetch("rsc/countries_10m.geo.json")
+      .then(fp => fp.json())
       .then(data => {
-        let column_layer = Object.assign(this.state.column_layer, {data: data});
-        this.setState({ column_layer: column_layer });
-        this.forceUpdate();
+        let old = this.state.geojson_layer;
+        old.data = data;
+        this.setState({ geojson_layer: old });
       });
+
+    fetch("http://localhost:5000/sdg_goals")
+      .then(response => response.json())
+      .then(goals =>
+        goals.map(goal => {
+          return {
+            key: goal.id,
+            text: `SDG ${goal.id_str}`,
+            value: goal.id,
+            image: { src: `img/E_SDG_Icons-${goal.id_str}.png` }
+          };
+        })
+      )
+      .then(goals => this.setState({ sdg_goals: goals }));
+
+    this._setCountry('KOR');  // FIXME: ad-hoc
   }
 
-  handleViewportChange = (viewport) => {
-    console.log('viewport has been changed!');
-    this.setState({ viewport });
+  componentWillUnmount() {
+    console.log("component will be unmounted!");
   }
+
+  handleViewportChange = viewport => {
+    console.log("viewport has been changed!");
+    this.setState({ viewport });
+  };
+
+  handleClickCountry = ({ object, x, y }) => {
+    if (!!object) {
+      let iso_a3 = object.properties.iso_a3;
+      this._setCountry(iso_a3);
+    }
+  };
+
+  _setCountry = (iso_a3) => {
+    fetch(`http://localhost:5000/country_by_iso_a3/${iso_a3}`)
+      .then(response => response.json())
+      .then(country => {
+        country.flag_url = `https://www.countryflags.io/${country.iso_a2.toLowerCase()}/flat/64.png`
+        console.log(country);
+        return country;
+      })
+      .then(country => this.setState({ selected_country: country }));
+  }
+
+  handleGoalChange = (e, { value }) => {
+    const selected_goal = value;
+    this.setState({ selected_goal });
+    fetch(`http://localhost:5000/sdg_targets_by_goal_id/${selected_goal}`)
+      .then(response => response.json())
+      .then(targets =>
+        targets.map(target => {
+          return {
+            key: target.id,
+            text: `Target ${target.id}`,
+            value: target.id
+          };
+        })
+      )
+      .then(targets => this.setState({ sdg_targets: targets }));
+
+    fetch(`http://localhost:5000/sdg_indicators_by_goal_id/${selected_goal}`)
+      .then(response => response.json())
+      .then(indicators =>
+        indicators.map(indicator => {
+          return {
+            key: indicator.id,
+            text: `Indicator ${indicator.id}`,
+            value: indicator.id
+          };
+        })
+      )
+      .then(indicators => this.setState({ sdg_indicators: indicators }));
+  };
+
+  handleTargetChange = (e, { value }) => {
+    const selected_target = value;
+    this.setState({ selected_target });
+    fetch(
+      `http://localhost:5000/sdg_indicators_by_target_id/${selected_target}`
+    )
+      .then(response => response.json())
+      .then(indicators =>
+        indicators.map(indicator => {
+          return {
+            key: indicator.id,
+            text: `Indicator ${indicator.id}`,
+            value: indicator.id
+          };
+        })
+      )
+      .then(indicators => this.setState({ sdg_indicators: indicators }));
+  };
+
+  handleIndicatorChange = (e, { value }) => {
+    const selected_indicator = value;
+    this.setState({ selected_indicator });
+  };
 
   render() {
     // const { viewport } = this.state;
-    const layers = [
-      new LineLayer(this.state.line_layer),
-      new ColumnLayer(this.state.column_layer)
-    ];
 
     return (
-      <div className='view-panel'>
-        <div className='view-panel__map'>
+      <div className="view-panel">
+        <div className="view-panel__map">
           <DeckGL
-            className='dashboard'
+            className="dashboard"
             initialViewState={this.state.initial_view_state}
             controller={true}
-            layers={layers}
+            layers={this.state.layers}
           >
             <StaticMap
-              className='dashboard__map-layer'
+              className="dashboard__map-layer"
               mapboxApiAccessToken={this.state.mapbox_access_token}
-              onViewportChange={this.handViewportChange} />
+              onViewportChange={this.handViewportChange}
+            />
+            <GeoJsonLayer
+              className="dashboard__country-layer"
+              {...this.state.geojson_layer}
+            />
           </DeckGL>
         </div>
-        <div className='view-panel__chart'>
-        
+        <div className="view-panel__chart">
+          <div>
+            <div>
+              {this.state.selected_country == null ? (
+                <div />
+              ) : (
+                <React.Fragment>
+                  <Item.Group>
+                    <Item>
+                      <Item.Image
+                        size="tiny" bordered
+                        src={this.state.selected_country.flag_url}
+                      />
+                      <Item.Content>
+                        <Item.Header as="a">
+                          {this.state.selected_country.name}
+                        </Item.Header>
+                        <Item.Extra>
+                          <Label color="blue">
+                            ISO-3166-1-alpha-3
+                            <Label.Detail>{this.state.selected_country.iso_a3}</Label.Detail>
+                          </Label>
+                          <Label color="yellow">
+                            language
+                            <Label.Detail>{this.state.selected_country.lang.split(',')[0]}</Label.Detail>
+                          </Label>
+                          <Label>{this.state.selected_country.region_name}</Label>
+                          <Label>{this.state.selected_country.subregion_name}</Label>
+                          <Label>{this.state.selected_country.developed_developing}</Label>
+                        </Item.Extra>
+                      </Item.Content>
+                    </Item>
+                  </Item.Group>
+                </React.Fragment>
+              )}
+            </div>
+          </div>
         </div>
-        
-
-        {/* <div className='dashboard'>
-          <ReactMapGL
-            className='dashboard__map'
-            {...this.state.viewport}
-            mapboxApiAccessToken='pk.eyJ1IjoiamlzdW5nbGltIiwiYSI6ImNqdDlmM3Y0YTBpd3M0YXRoM3NoeThoZjQifQ.N6OE3k-pAOvhNsmAYx51LQ'
-            onViewportChange={this.handViewportChange} />
-        </div> */}
+        <div className='view-panel__float'>
+          <React.Fragment>
+            <Dropdown
+              placeholder="Select Your Goal"
+              closeOnEscape
+              selection
+              header="SDG: GOALS"
+              options={this.state.sdg_goals}
+              onChange={this.handleGoalChange}
+              value={this.state.selected_goal}
+            />{" "}
+            <Dropdown
+              placeholder="Select Target"
+              closeOnEscape
+              selection
+              header="SDG: TARGETS"
+              options={this.state.sdg_targets}
+              onChange={this.handleTargetChange}
+              value={this.state.selected_target}
+            />{" "}
+            <Dropdown
+              placeholder="Select Indicator"
+              closeOnEscape
+              selection
+              header="SDG: INDICATORS"
+              options={this.state.sdg_indicators}
+              onChange={this.handleIndicatorChange}
+              value={this.state.selected_indicator}
+            />
+          </React.Fragment>
+        </div>
       </div>
     );
   }
