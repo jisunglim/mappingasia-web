@@ -21,6 +21,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 // Use default plotly-dist to create Plotly component
 import Plotly from 'plotly.js-dist';
 import createPlotlyComponent from 'react-plotly.js/factory';
+import { thisTypeAnnotation } from '@babel/types';
 
 // import Plot from 'react-plotly.js';
 const Plot = createPlotlyComponent(Plotly);
@@ -46,10 +47,10 @@ class App extends Component {
 
       /* Layers */
       geojson_layer: {
-        id: "country-map",
+        id: "country-layer",
         data: null, // To be filled async
         pickable: true,
-        stroked: false,
+        stroked: true,
         filled: true,
         extruded: true,
         lineWidthScale: 20,
@@ -58,17 +59,13 @@ class App extends Component {
           return [160, 160, 180, 200];
         },
         getLineColor: d => {
-          return [0, 0, 0, 999];
+          return [0, 0, 0, 255];
         },
         getRadius: 100,
         getLineWidth: 2,
         getElevation: 30,
-        onHover: ({ object, x, y }) => {
-          // const tooltip = object.properties.name || object.properties.station;
-          /* Update tooltip
-              http://deck.gl/#/documentation/developer-guide/adding-interactivity?section=example-display-a-tooltip-for-hovered-object
-          */
-        },
+        autoHighlight: true,
+        highlightColor: [74, 216, 255, 255],  // Hover color
         onClick: this.handleClickCountry
       },
       /* SDG metadata */
@@ -79,11 +76,31 @@ class App extends Component {
 
       /* selected */
       selected_country: null,
-
       selected_goal: null,
       selected_target: null,
       selected_indicator: null,
-      selected_series: null
+      selected_series: null,
+
+      /* UI / UX */
+      selected_layer: {
+        id: "country-layer--selected",
+        data: null, // To be filled async
+        pickable: true,
+        stroked: true,
+        filled: true,
+        extruded: true,
+        lineWidthScale: 20,
+        lineWidthMinPixels: 2,
+        getFillColor: d => [67, 113, 232, 255],
+        getLineColor: d => {
+          return [0, 0, 0, 255];
+        },
+        getRadius: 100,
+        getLineWidth: 2,
+        getElevation: 30,
+        autoHighlight: true,
+        highlightColor: [74, 216, 255, 255],  // Hover color
+      },
     };
   }
 
@@ -92,11 +109,6 @@ class App extends Component {
    ***********************************************************/
   componentDidMount() {
     console.log("component has been mounted!");
-
-    // let layers = [
-    //   new GeoJsonLayer(this.state.geojson_layer)
-    // ]
-    // this.setState({ layers: layers });
 
     fetch("rsc/countries_10m.geo.json")
       .then(fp => fp.json())
@@ -132,8 +144,14 @@ class App extends Component {
     this.setState({ viewport });
   };
 
-  handleClickCountry = ({ object, x, y }) => {
+  
+  handleClickCountry = ({ color, layer, object, picked, x, y }) => {
     if (!!object) {
+      let old = this.state.selected_layer;
+      old.data = object;
+      this.setState({ selected_layer: old });
+
+      console.log(object);
       let iso_a3 = object.properties.iso_a3;
       this._setCountry(iso_a3);
     }
@@ -224,6 +242,10 @@ class App extends Component {
             <GeoJsonLayer
               className="dashboard__country-layer"
               {...this.state.geojson_layer}
+            />
+            <GeoJsonLayer
+              className="dashboard__country-layer--selected"
+              {...this.state.selected_layer}
             />
           </DeckGL>
         </div>
