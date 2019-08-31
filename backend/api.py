@@ -113,6 +113,7 @@ def _select_sdg_indicators():
         print('cache shot!')
         return pickle.loads(zlib.decompress(sdg_indicators))
 
+
 def _select_country_list():
     if r is not None:
         country_list = r.get('country_list')

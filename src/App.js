@@ -4,9 +4,9 @@ import './App.scss';
 import axios, { post } from 'axios';
 
 // react semantic ui
-import { 
+import {
   Divider, Image, Dropdown, Item, Header,
-  Label, Grid, Tab, Button, Card, Table, List, Menu, Input, Form, Sidebar, Segment, Popup 
+  Label, Grid, Tab, Button, Card, Table, List, Menu, Input, Form, Sidebar, Segment, Popup
 } from 'semantic-ui-react';
 
 // vis tools
@@ -23,12 +23,16 @@ import Plotly from 'plotly.js-dist';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import { thisTypeAnnotation } from '@babel/types';
 
+// d3
+import * as d3 from 'd3';
+
 // import Plot from 'react-plotly.js';
 const Plot = createPlotlyComponent(Plotly);
 
 class App extends Component {
   constructor(props) {
     super(props);
+
 
     // default handlers
     this.componentDidMount = this.componentDidMount.bind(this);
@@ -49,23 +53,26 @@ class App extends Component {
       geojson_layer: {
         id: "country-layer",
         data: null, // To be filled async
+        opacity: 0.6,
         pickable: true,
         stroked: true,
         filled: true,
-        extruded: true,
-        lineWidthScale: 20,
-        lineWidthMinPixels: 2,
+        extruded: false,
+        wireframe: false,
+        fp64: true,
+        lineWidthUnits: 'pixels',
+        lineWidthScale: 1,
+        lineWidthMinPixels: 0.5,
+        lineJointRounded: true,
         getFillColor: d => {
-          return [160, 160, 180, 200];
+          const temp_idx = Math.abs(parseInt(d.properties.iso_n3)) % 10;
+          return ((rgb) => [rgb.r, rgb.g, rgb.b])(d3.color(d3.interpolateYlGnBu(temp_idx/10)).rgb());
         },
-        getLineColor: d => {
-          return [0, 0, 0, 255];
-        },
-        getRadius: 100,
-        getLineWidth: 2,
-        getElevation: 30,
+        getLineColor: [255, 255, 255],
+        getRadius: 1,
+        getLineWidth: 0.5,
         autoHighlight: true,
-        highlightColor: [74, 216, 255, 255],  // Hover color
+        highlightColor: [255, 255, 255, 50],  // Hover color
         onClick: this.handleClickCountry
       },
       /* SDG metadata */
@@ -85,21 +92,27 @@ class App extends Component {
       selected_layer: {
         id: "country-layer--selected",
         data: null, // To be filled async
+        opacity: 1,
         pickable: true,
         stroked: true,
         filled: true,
-        extruded: true,
-        lineWidthScale: 20,
+        extruded: false,
+        wireframe: false,
+        fp64: true,
+        lineWidthUnits: 'pixels',
+        lineWidthScale: 1,
         lineWidthMinPixels: 2,
-        getFillColor: d => [67, 113, 232, 255],
-        getLineColor: d => {
-          return [0, 0, 0, 255];
+        lineJointRounded: true,
+        getFillColor: d => {
+          const temp_idx = Math.abs(parseInt(d.properties.iso_n3)) % 10;
+          return ((rgb) => [rgb.r, rgb.g, rgb.b])(d3.color(d3.interpolateYlGnBu(temp_idx / 10)).rgb());
         },
-        getRadius: 100,
+        getLineColor: [255, 255, 255],
+        getRadius: 2,
         getLineWidth: 2,
         getElevation: 30,
         autoHighlight: true,
-        highlightColor: [74, 216, 255, 255],  // Hover color
+        highlightColor: [255, 255, 255, 50],  // Hover color
       },
     };
   }
@@ -144,25 +157,29 @@ class App extends Component {
     this.setState({ viewport });
   };
 
-  
+
   handleClickCountry = ({ color, layer, object, picked, x, y }) => {
     if (!!object) {
       let old = this.state.selected_layer;
       old.data = object;
       this.setState({ selected_layer: old });
 
-      console.log(object);
+      console.log("countries.geo.json:", object);
       let iso_a3 = object.properties.iso_a3;
       this._setCountry(iso_a3);
     }
   };
 
   _setCountry = (iso_a3) => {
+    if (iso_a3 === -99) {
+      this.setState({ selected_country: null });
+      return;
+    }
     fetch(`http://localhost:5000/country_by_iso_a3/${iso_a3}`)
       .then(response => response.json())
       .then(country => {
         country.flag_url = `https://www.countryflags.io/${country.iso_a2.toLowerCase()}/flat/64.png`
-        console.log(country);
+        console.log("database:", country);
         return country;
       })
       .then(country => this.setState({ selected_country: country }));
@@ -201,9 +218,7 @@ class App extends Component {
   handleTargetChange = (e, { value }) => {
     const selected_target = value;
     this.setState({ selected_target });
-    fetch(
-      `http://localhost:5000/sdg_indicators_by_target_id/${selected_target}`
-    )
+    fetch(`http://localhost:5000/sdg_indicators_by_target_id/${selected_target}`)
       .then(response => response.json())
       .then(indicators =>
         indicators.map(indicator => {
@@ -220,6 +235,7 @@ class App extends Component {
   handleIndicatorChange = (e, { value }) => {
     const selected_indicator = value;
     this.setState({ selected_indicator });
+    fetch(`http://localhost:5000/`)
   };
 
   render() {
@@ -253,7 +269,7 @@ class App extends Component {
           <div>
             <div>
               {this.state.selected_country == null ? (
-                <div />
+                <div></div>
               ) : (
                 <React.Fragment>
                   <Item.Group>

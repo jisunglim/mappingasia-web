@@ -1,3 +1,4 @@
 node_modules/*
 backend/__pycache__/
 build/
+dump.rdb
