@@ -27,7 +27,7 @@ CORS(app)
 # set postgres
 pg_id = "datascience"
 pg_pw = "TZAUfThGBTL7ps_2C4VU"
-pg_url = 'mappingasia-dev.cjteux4pnxoo.ap-northeast-2.rds.amazonaws.com'
+pg_url = 'localhost'
 pg_port = 5432
 pg_database = 'mappingasia'
 pg_url_full = f'postgres+psycopg2://{pg_id}:{pg_pw}@{pg_url}:{pg_port}/{pg_database}'

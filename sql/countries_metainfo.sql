@@ -16,5 +16,7 @@ select
 	"Sub_region_Name" as subregion_name,
 	"is_independent" as is_independent
 from datascience.country_list
-where "Region_Name" = 'Asia'
-and "Developed_or_Developing_Countries" = 'Developed';
+
+
+-- where "Region_Name" = 'Asia'
+-- and "Developed_or_Developing_Countries" = 'Developed';
